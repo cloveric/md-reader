@@ -9,7 +9,7 @@ use rfd::FileDialog;
 use tao::dpi::LogicalSize;
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoop, EventLoopBuilder};
-use tao::window::WindowBuilder;
+use tao::window::{Icon, WindowBuilder};
 use wry::{WebView, WebViewBuilder};
 
 #[derive(Debug)]
@@ -22,6 +22,7 @@ const ENGINE_JS_B64: &str = include_str!("../assets/vendor/engine.js.b64");
 const ENGINE_CSS_B64: &str = include_str!("../assets/vendor/engine.css.b64");
 const ENGINE_ICON_B64: &str = include_str!("../assets/vendor/icon_ant.js.b64");
 const I18N_ZH_CN_B64: &str = include_str!("../assets/vendor/i18n_zh_cn.js.b64");
+const APP_ICON_PNG: &[u8] = include_bytes!("../assets/app_icon.png");
 
 static INIT_SCRIPT: OnceLock<String> = OnceLock::new();
 
@@ -53,6 +54,13 @@ fn send_event(webview: &WebView, event: HostEvent) {
     if let Ok(script) = to_webview_script(&event) {
         let _ = webview.evaluate_script(&script);
     }
+}
+
+fn load_window_icon() -> Option<Icon> {
+    let image = image::load_from_memory_with_format(APP_ICON_PNG, image::ImageFormat::Png).ok()?;
+    let rgba = image.to_rgba8();
+    let (width, height) = rgba.dimensions();
+    Icon::from_rgba(rgba.into_raw(), width, height).ok()
 }
 
 fn next_tab_id(tab_seq: &mut u64) -> String {
@@ -124,9 +132,11 @@ fn main() -> wry::Result<()> {
     let initial_file = std::env::args().nth(1).map(PathBuf::from);
     let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
     let proxy = event_loop.create_proxy();
+    let window_icon = load_window_icon();
 
     let window = WindowBuilder::new()
         .with_title("md-beader")
+        .with_window_icon(window_icon)
         .with_inner_size(LogicalSize::new(1280.0, 860.0))
         .build(&event_loop)
         .map_err(|_| wry::Error::InitScriptError)?;
@@ -233,4 +243,3 @@ fn main() -> wry::Result<()> {
         }
     })
 }
-
