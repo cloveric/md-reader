@@ -1,11 +1,11 @@
 # Contributing
 
-Thank you for your interest in improving Markdown Studio.
+Thank you for your interest in improving md-beader.
 
 ## Development Setup
 
 ```powershell
-cd C:\Users\hangw\md-reader
+cd C:\Users\hangw\md-beader
 cargo test
 cargo build --release
 ```
@@ -42,3 +42,4 @@ Example:
 ```text
 feat: add new-file action and Ctrl+N shortcut
 ```
+

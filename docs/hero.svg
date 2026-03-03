@@ -15,7 +15,7 @@
   <ellipse cx="960" cy="70" rx="260" ry="140" fill="url(#accent)"/>
 
   <text x="96" y="158" fill="#F3F7FF" font-family="Segoe UI, Microsoft YaHei, Arial" font-size="54" font-weight="700">
-    Markdown Studio
+    md-beader
   </text>
   <text x="96" y="212" fill="#D4E3FF" font-family="Segoe UI, Microsoft YaHei, Arial" font-size="24" font-weight="500">
     Rust + WebView2 的离线 Markdown 编辑与审阅工作台
@@ -30,3 +30,4 @@
   <rect x="492" y="252" width="204" height="42" rx="10" fill="#1D403B" stroke="#7AE7D0"/>
   <text x="518" y="280" fill="#E8FFF9" font-family="Segoe UI, Microsoft YaHei, Arial" font-size="18" font-weight="600">Three Modes</text>
 </svg>
+

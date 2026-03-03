@@ -126,7 +126,7 @@ fn main() -> wry::Result<()> {
     let proxy = event_loop.create_proxy();
 
     let window = WindowBuilder::new()
-        .with_title("Markdown Studio")
+        .with_title("md-beader")
         .with_inner_size(LogicalSize::new(1280.0, 860.0))
         .build(&event_loop)
         .map_err(|_| wry::Error::InitScriptError)?;
@@ -233,3 +233,4 @@ fn main() -> wry::Result<()> {
         }
     })
 }
+

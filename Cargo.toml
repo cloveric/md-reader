@@ -1,7 +1,10 @@
 [package]
-name = "markdown_reader"
+name = "md-beader"
 version = "0.1.0"
 edition = "2024"
+
+[lib]
+name = "markdown_reader"
 
 [dependencies]
 eframe = "0.33"
