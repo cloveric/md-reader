@@ -27,8 +27,6 @@ English | [简体中文](README.zh-CN.md)
   </p>
 </div>
 
-## Campaign Artwork
-
 <div align="center">
   <img src="docs/branding/star-campaign.png" alt="md-bider promotional artwork" width="100%" />
   <p><strong>md-bider (马得笔): a lightweight but powerful Markdown browser and editor.</strong></p>

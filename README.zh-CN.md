@@ -27,8 +27,6 @@
   </p>
 </div>
 
-## 宣传主视觉
-
 <div align="center">
   <img src="docs/branding/star-campaign.png" alt="md-bider 宣传图" width="100%" />
   <p><strong>md-bider（马得笔）：轻量但强大的 Markdown 文件浏览器与编辑器。</strong></p>
