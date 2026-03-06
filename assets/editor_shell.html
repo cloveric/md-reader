@@ -962,10 +962,10 @@
       const actionBar = document.querySelector('.mdbider-preview__action');
       if (!actionBar || actionBar.dataset.patched) return;
 
-      // Style the parent .mdbider-preview as a row flex container
+      // Preserve the engine's mode-specific visibility rules.
+      // In SV mode the preview container is already flex; in IR/WYSIWYG it may be hidden.
       const previewEl = actionBar.closest('.mdbider-preview');
       if (previewEl) {
-        previewEl.style.display = 'flex';
         previewEl.style.flexDirection = 'row';
       }
 

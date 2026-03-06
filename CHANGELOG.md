@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.3] - 2026-03-06
+
+### Fixed
+
+- Keep the preview sidebar hidden in `IR` and `WYSIWYG` modes so split layout only appears in `SV`.
+- Added a regression test to prevent preview-container visibility overrides from reintroducing extra split panes.
+
 ## [0.1.0] - 2026-03-03
 
 ### Added

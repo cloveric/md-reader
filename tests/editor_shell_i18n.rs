@@ -39,3 +39,16 @@ fn defaults_to_english_without_saved_locale() {
         "expected default locale to be English when no saved preference exists"
     );
 }
+
+#[test]
+fn does_not_force_preview_container_visible_outside_split_mode() {
+    let html = shell_html();
+    assert!(
+        !html.contains("display: flex !important;"),
+        "expected no CSS override that forces the preview container visible"
+    );
+    assert!(
+        !html.contains("previewEl.style.display = 'flex';"),
+        "expected no JS override that forces the preview container visible"
+    );
+}
