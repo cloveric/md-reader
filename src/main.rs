@@ -7,12 +7,13 @@ use base64::Engine as _;
 
 use md_bider::desktop::{HostEvent, IpcCommand, to_webview_script};
 use md_bider::io::{read_text_with_fallback, write_text_utf8};
+use md_bider::runtime_paths::webview_data_directory;
 use rfd::FileDialog;
 use tao::dpi::LogicalSize;
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoop, EventLoopBuilder};
 use tao::window::{Icon, WindowBuilder};
-use wry::{WebView, WebViewBuilder};
+use wry::{WebContext, WebView, WebViewBuilder};
 
 #[derive(Debug)]
 enum UserEvent {
@@ -222,7 +223,9 @@ fn main() -> wry::Result<()> {
         .build(&event_loop)
         .map_err(|_| wry::Error::InitScriptError)?;
 
-    let webview = WebViewBuilder::new()
+    let mut web_context = WebContext::new(Some(webview_data_directory()));
+
+    let webview = WebViewBuilder::with_web_context(&mut web_context)
         .with_initialization_script(initialization_script())
         .with_html(INDEX_HTML_TEMPLATE.to_owned())
         .with_ipc_handler(move |request| {

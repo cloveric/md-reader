@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.5] - 2026-03-06
+
+### Fixed
+
+- Persist the selected UI language across launches by storing WebView data in a stable application data directory instead of an executable-name-specific WebView2 folder.
+- Keep the project build artifact as the canonical local executable so language persistence no longer depends on copying binaries onto the desktop.
+
+### Docs
+
+- Added design and implementation notes for persistent language settings and desktop launcher behavior.
+
 ## [0.4.4] - 2026-03-06
 
 ### Fixed

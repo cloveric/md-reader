@@ -1,6 +1,7 @@
 pub mod desktop;
 pub mod io;
 pub mod parser;
+pub mod runtime_paths;
 pub mod ui;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
