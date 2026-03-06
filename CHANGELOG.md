@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.6] - 2026-03-06
+
+### Fixed
+
+- Load the embedded editor shell from a custom protocol URL instead of `with_html`, giving the app a stable origin so persisted UI language settings can actually be restored on the next launch.
+- Keep the stable WebView data directory wiring introduced in `0.4.5`, so persistence no longer depends on the executable filename or location.
+
 ## [0.4.5] - 2026-03-06
 
 ### Fixed

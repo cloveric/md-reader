@@ -13,6 +13,7 @@ use tao::dpi::LogicalSize;
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoop, EventLoopBuilder};
 use tao::window::{Icon, WindowBuilder};
+use wry::http::{Response, StatusCode, header::CONTENT_TYPE};
 use wry::{WebContext, WebView, WebViewBuilder};
 
 #[derive(Debug)]
@@ -26,6 +27,8 @@ const ENGINE_CSS_B64: &str = include_str!("../assets/vendor/engine.css.b64");
 const ENGINE_ICON_B64: &str = include_str!("../assets/vendor/icon_ant.js.b64");
 const I18N_ZH_CN_B64: &str = include_str!("../assets/vendor/i18n_zh_cn.js.b64");
 const APP_ICON_PNG: &[u8] = include_bytes!("../assets/app_icon.png");
+const APP_CUSTOM_PROTOCOL: &str = "md-bider";
+const APP_INDEX_URL: &str = "md-bider://localhost/index.html";
 
 static INIT_SCRIPT: OnceLock<String> = OnceLock::new();
 
@@ -57,6 +60,27 @@ fn send_event(webview: &WebView, event: HostEvent) {
     if let Ok(script) = to_webview_script(&event) {
         let _ = webview.evaluate_script(&script);
     }
+}
+
+fn app_protocol_response(path: &str) -> Response<Vec<u8>> {
+    let (status, content_type, body) = match path {
+        "/" | "/index.html" => (
+            StatusCode::OK,
+            "text/html; charset=utf-8",
+            INDEX_HTML_TEMPLATE.as_bytes().to_vec(),
+        ),
+        _ => (
+            StatusCode::NOT_FOUND,
+            "text/plain; charset=utf-8",
+            b"Not Found".to_vec(),
+        ),
+    };
+
+    Response::builder()
+        .status(status)
+        .header(CONTENT_TYPE, content_type)
+        .body(body)
+        .expect("build app protocol response")
 }
 
 fn load_window_icon() -> Option<Icon> {
@@ -226,8 +250,11 @@ fn main() -> wry::Result<()> {
     let mut web_context = WebContext::new(Some(webview_data_directory()));
 
     let webview = WebViewBuilder::with_web_context(&mut web_context)
+        .with_custom_protocol(APP_CUSTOM_PROTOCOL.into(), move |_webview_id, request| {
+            app_protocol_response(request.uri().path()).map(Into::into)
+        })
         .with_initialization_script(initialization_script())
-        .with_html(INDEX_HTML_TEMPLATE.to_owned())
+        .with_url(APP_INDEX_URL)
         .with_ipc_handler(move |request| {
             let _ = proxy.send_event(UserEvent::Ipc(request.body().to_owned()));
         })
