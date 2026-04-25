@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.9] - 2026-04-25
+
+### Fixed
+
+- Sign macOS release app bundles in the GitHub release workflow.
+
 ## [0.4.8] - 2026-04-25
 
 ### Added
