@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.10] - 2026-04-25
+
+### Changed
+
+- Open new sessions in WYSIWYG mode by default.
+- Crop the macOS app icon artwork so it fills the icon frame better.
+
 ## [0.4.9] - 2026-04-25
 
 ### Fixed

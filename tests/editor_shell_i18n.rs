@@ -41,6 +41,15 @@ fn defaults_to_english_without_saved_locale() {
 }
 
 #[test]
+fn defaults_to_wysiwyg_editor_mode() {
+    let html = shell_html();
+    assert!(
+        html.contains("let currentMode = \"wysiwyg\";"),
+        "expected the editor shell to open in WYSIWYG mode by default"
+    );
+}
+
+#[test]
 fn only_forces_preview_container_visible_in_split_mode() {
     let html = shell_html();
     assert!(

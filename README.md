@@ -34,7 +34,7 @@ English | [简体中文](README.zh-CN.md)
 
 ## Why md-bider Wins Attention
 
-- **Instant writing flow**: Launch directly into `IR` mode and start typing immediately.
+- **Instant writing flow**: Launch directly into `WYSIWYG` mode and start typing immediately.
 - **Desktop-grade tabs**: Chrome-like tab behavior for true multi-file local editing.
 - **CJK-safe file handling**: `UTF-8` + `UTF-16 BOM` + detector + `GBK` fallback.
 - **Rust-powered runtime**: Compiled native core for stable, predictable desktop behavior.
