@@ -187,6 +187,9 @@ impl MarkdownReaderApp {
     }
 
     fn open_file_dialog(&mut self) {
+        if !self.allow_discarding_unsaved_changes() {
+            return;
+        }
         let file = FileDialog::new()
             .add_filter("Markdown", &["md", "markdown", "txt"])
             .pick_file();
@@ -196,9 +199,21 @@ impl MarkdownReaderApp {
     }
 
     fn reload_current(&mut self) {
+        if !self.allow_discarding_unsaved_changes() {
+            return;
+        }
         if let Some(path) = self.current_file.clone() {
             self.load_file(path);
         }
+    }
+
+    fn allow_discarding_unsaved_changes(&mut self) -> bool {
+        if !self.dirty {
+            return true;
+        }
+        self.status_message = None;
+        self.last_error = Some("当前文件有未保存修改，请先保存或另存为。".to_owned());
+        false
     }
 
     fn load_file(&mut self, path: PathBuf) {
@@ -821,4 +836,23 @@ fn spans_to_layout_job(
         job.append(&text, 0.0, format);
     }
     job
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MarkdownReaderApp;
+
+    #[test]
+    fn dirty_egui_document_blocks_destructive_load_actions() {
+        let mut app = MarkdownReaderApp {
+            markdown_text: "changed".to_owned(),
+            saved_snapshot: "saved".to_owned(),
+            ..Default::default()
+        };
+        app.refresh_dirty_state();
+
+        assert!(!app.allow_discarding_unsaved_changes());
+        assert!(app.dirty);
+        assert!(app.last_error.is_some());
+    }
 }

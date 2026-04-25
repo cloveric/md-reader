@@ -395,6 +395,7 @@
         pathNotOpened: "未打开文件",
         closeTab: "关闭标签",
         closeUnsavedConfirm: "标签“{title}”尚未保存，确定关闭吗？",
+        closeWindowUnsavedConfirm: "还有未保存的标签，确定关闭 md-bider 吗？",
         statusPreparing: "准备中...",
         statusSwitchTab: "已切换标签",
         statusCloseTab: "已关闭标签",
@@ -442,6 +443,7 @@
         pathNotOpened: "No file opened",
         closeTab: "Close tab",
         closeUnsavedConfirm: "Tab \"{title}\" has unsaved changes. Close anyway?",
+        closeWindowUnsavedConfirm: "Some tabs have unsaved changes. Close md-bider anyway?",
         statusPreparing: "Preparing...",
         statusSwitchTab: "Switched tab",
         statusCloseTab: "Closed tab",
@@ -852,6 +854,11 @@
       renderTabs();
     }
 
+    function hasDirtyTabs() {
+      persistActiveTabContent();
+      return tabs.some((tab) => tab.dirty);
+    }
+
     function closeTab(tabId) {
       const index = tabs.findIndex((tab) => tab.id === tabId);
       if (index === -1) {
@@ -1247,6 +1254,16 @@
       hostSend(payload);
     }
 
+    function runEditorHistoryCommand(command) {
+      const history = editor?.mdbider?.undo;
+      const state = editor?.mdbider;
+      if (!history || !state || typeof history[command] !== "function") {
+        return false;
+      }
+      history[command](state);
+      return true;
+    }
+
     function translateHostMessage(message) {
       const source = String(message || "").trim();
       if (!source) {
@@ -1308,6 +1325,12 @@
           setStatus(localized);
           return;
         }
+        if (message.event === "close_requested") {
+          if (!hasDirtyTabs() || window.confirm(t("closeWindowUnsavedConfirm"))) {
+            hostSend({ cmd: "close_confirmed" });
+          }
+          return;
+        }
         if (message.event === "error") {
           const fallback = t("statusGenericError");
           const localized = translateHostMessage(message.message || fallback);
@@ -1363,6 +1386,15 @@
       } else if (key === "s") {
         event.preventDefault();
         requestSave(false);
+      } else if (key === "z" && event.shiftKey) {
+        event.preventDefault();
+        runEditorHistoryCommand("redo");
+      } else if (key === "z") {
+        event.preventDefault();
+        runEditorHistoryCommand("undo");
+      } else if (key === "y") {
+        event.preventDefault();
+        runEditorHistoryCommand("redo");
       }
     });
 
@@ -1378,4 +1410,3 @@
   </script>
 </body>
 </html>
-

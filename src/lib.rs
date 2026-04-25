@@ -1,4 +1,5 @@
 pub mod app_init;
+pub mod assets;
 pub mod desktop;
 pub mod io;
 pub mod parser;

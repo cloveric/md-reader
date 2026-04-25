@@ -19,7 +19,15 @@ pub fn read_text_with_fallback(path: &Path) -> Result<String, LoadError> {
 }
 
 pub fn write_text_utf8(path: &Path, text: &str) -> Result<(), std::io::Error> {
-    std::fs::write(path, text.as_bytes())
+    use std::io::Write;
+
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    let mut file = tempfile::NamedTempFile::new_in(dir)?;
+    file.write_all(text.as_bytes())?;
+    file.flush()?;
+    file.as_file().sync_all()?;
+    file.persist(path).map_err(|err| err.error)?;
+    Ok(())
 }
 
 fn decode_text_with_fallback(bytes: &[u8]) -> Result<String, LoadError> {

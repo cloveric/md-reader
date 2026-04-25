@@ -1,10 +1,12 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
 
 use md_bider::app_init::build_initialization_script;
+use md_bider::assets::{UploadedAssetRegistry, content_type_for_path, sanitize_upload_name};
 use md_bider::desktop::{HostEvent, IpcCommand, to_webview_script};
 use md_bider::io::{read_text_with_fallback, write_text_utf8};
 use md_bider::runtime_paths::webview_data_directory;
@@ -25,6 +27,7 @@ const INDEX_HTML_TEMPLATE: &str = include_str!("../assets/editor_shell.html");
 const APP_ICON_PNG: &[u8] = include_bytes!("../assets/app_icon.png");
 const APP_CUSTOM_PROTOCOL: &str = "md-bider";
 const APP_INDEX_URL: &str = "md-bider://localhost/index.html";
+type SharedAssetRegistry = Arc<Mutex<UploadedAssetRegistry>>;
 
 fn send_event(webview: &WebView, event: HostEvent) {
     if let Ok(script) = to_webview_script(&event) {
@@ -32,7 +35,17 @@ fn send_event(webview: &WebView, event: HostEvent) {
     }
 }
 
-fn app_protocol_response(path: &str) -> Response<Vec<u8>> {
+fn app_protocol_response(path: &str, assets: &SharedAssetRegistry) -> Response<Vec<u8>> {
+    let asset_path = assets
+        .lock()
+        .ok()
+        .and_then(|registry| registry.resolve_request_path(path));
+    if let Some(asset_path) = asset_path
+        && let Ok(body) = std::fs::read(&asset_path)
+    {
+        return build_response(StatusCode::OK, content_type_for_path(&asset_path), body);
+    }
+
     let (status, content_type, body) = match path {
         "/" | "/index.html" => (
             StatusCode::OK,
@@ -46,6 +59,10 @@ fn app_protocol_response(path: &str) -> Response<Vec<u8>> {
         ),
     };
 
+    build_response(status, content_type, body)
+}
+
+fn build_response(status: StatusCode, content_type: &str, body: Vec<u8>) -> Response<Vec<u8>> {
     Response::builder()
         .status(status)
         .header(CONTENT_TYPE, content_type)
@@ -100,7 +117,14 @@ fn unique_file_path(dir: &Path, name: &str) -> PathBuf {
     }
 }
 
-fn upload_image(webview: &WebView, tab_id: String, name: &str, data: &str, dir: Option<String>) {
+fn upload_image(
+    webview: &WebView,
+    assets: &SharedAssetRegistry,
+    tab_id: String,
+    name: &str,
+    data: &str,
+    dir: Option<String>,
+) {
     let bytes = match base64::engine::general_purpose::STANDARD.decode(data) {
         Ok(b) => b,
         Err(err) => {
@@ -129,7 +153,8 @@ fn upload_image(webview: &WebView, tab_id: String, name: &str, data: &str, dir: 
         return;
     }
 
-    let dest = unique_file_path(&assets_dir, name);
+    let safe_name = sanitize_upload_name(name);
+    let dest = unique_file_path(&assets_dir, &safe_name);
     if let Err(err) = std::fs::write(&dest, &bytes) {
         send_event(
             webview,
@@ -142,8 +167,13 @@ fn upload_image(webview: &WebView, tab_id: String, name: &str, data: &str, dir: 
 
     let relative_url = format!(
         "assets/{}",
-        dest.file_name().and_then(|f| f.to_str()).unwrap_or(name)
+        dest.file_name()
+            .and_then(|f| f.to_str())
+            .unwrap_or(&safe_name)
     );
+    if let Ok(mut registry) = assets.lock() {
+        registry.register_uploaded_asset(relative_url.clone(), dest);
+    }
 
     send_event(
         webview,
@@ -154,9 +184,21 @@ fn upload_image(webview: &WebView, tab_id: String, name: &str, data: &str, dir: 
     );
 }
 
-fn open_file_into_editor(webview: &WebView, tab_id: String, path: PathBuf) {
+fn register_document_assets(assets: &SharedAssetRegistry, path: &Path) {
+    if let Ok(mut registry) = assets.lock() {
+        registry.register_document_path(path);
+    }
+}
+
+fn open_file_into_editor(
+    webview: &WebView,
+    assets: &SharedAssetRegistry,
+    tab_id: String,
+    path: PathBuf,
+) {
     match read_text_with_fallback(&path) {
         Ok(content) => {
+            register_document_assets(assets, &path);
             send_event(
                 webview,
                 HostEvent::FileOpened {
@@ -177,9 +219,16 @@ fn open_file_into_editor(webview: &WebView, tab_id: String, path: PathBuf) {
     }
 }
 
-fn save_content_to_path(webview: &WebView, tab_id: String, path: PathBuf, content: &str) {
+fn save_content_to_path(
+    webview: &WebView,
+    assets: &SharedAssetRegistry,
+    tab_id: String,
+    path: PathBuf,
+    content: &str,
+) {
     match write_text_utf8(&path, content) {
         Ok(()) => {
+            register_document_assets(assets, &path);
             send_event(
                 webview,
                 HostEvent::FileSaved {
@@ -213,10 +262,12 @@ fn main() -> wry::Result<()> {
         .map_err(|_| wry::Error::InitScriptError)?;
 
     let mut web_context = WebContext::new(Some(webview_data_directory()));
+    let assets: SharedAssetRegistry = Arc::new(Mutex::new(UploadedAssetRegistry::default()));
+    let protocol_assets = Arc::clone(&assets);
 
     let webview = WebViewBuilder::with_web_context(&mut web_context)
         .with_custom_protocol(APP_CUSTOM_PROTOCOL.into(), move |_webview_id, request| {
-            app_protocol_response(request.uri().path()).map(Into::into)
+            app_protocol_response(request.uri().path(), &protocol_assets).map(Into::into)
         })
         .with_initialization_script(build_initialization_script())
         .with_url(APP_INDEX_URL)
@@ -236,7 +287,7 @@ fn main() -> wry::Result<()> {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
-                *control_flow = ControlFlow::Exit;
+                send_event(&webview, HostEvent::CloseRequested);
             }
             Event::UserEvent(UserEvent::Ipc(payload)) => match IpcCommand::parse(&payload) {
                 Ok(IpcCommand::AppReady { tab_id }) => {
@@ -248,7 +299,7 @@ fn main() -> wry::Result<()> {
                     );
                     if let Some(path) = pending_initial_file.take() {
                         let target_tab_id = tab_id.unwrap_or_else(|| next_tab_id(&mut tab_seq));
-                        open_file_into_editor(&webview, target_tab_id, path);
+                        open_file_into_editor(&webview, &assets, target_tab_id, path);
                     }
                 }
                 Ok(IpcCommand::NewFile { tab_id }) => {
@@ -268,7 +319,7 @@ fn main() -> wry::Result<()> {
                         .pick_file();
                     if let Some(path) = file {
                         let target_tab_id = tab_id.unwrap_or_else(|| next_tab_id(&mut tab_seq));
-                        open_file_into_editor(&webview, target_tab_id, path);
+                        open_file_into_editor(&webview, &assets, target_tab_id, path);
                     }
                 }
                 Ok(IpcCommand::SaveFile {
@@ -279,14 +330,14 @@ fn main() -> wry::Result<()> {
                     let target_tab_id = tab_id.unwrap_or_else(|| next_tab_id(&mut tab_seq));
                     let current_path = normalize_path(path);
                     if let Some(path) = current_path {
-                        save_content_to_path(&webview, target_tab_id, path, &content);
+                        save_content_to_path(&webview, &assets, target_tab_id, path, &content);
                     } else {
                         let file = FileDialog::new()
                             .add_filter("Markdown", &["md", "markdown", "txt"])
                             .set_file_name(default_name_from_path(None))
                             .save_file();
                         if let Some(path) = file {
-                            save_content_to_path(&webview, target_tab_id, path, &content);
+                            save_content_to_path(&webview, &assets, target_tab_id, path, &content);
                         }
                     }
                 }
@@ -303,7 +354,7 @@ fn main() -> wry::Result<()> {
                         .set_file_name(default_name)
                         .save_file();
                     if let Some(path) = file {
-                        save_content_to_path(&webview, target_tab_id, path, &content);
+                        save_content_to_path(&webview, &assets, target_tab_id, path, &content);
                     }
                 }
                 Ok(IpcCommand::UploadImage {
@@ -313,7 +364,10 @@ fn main() -> wry::Result<()> {
                     dir,
                 }) => {
                     let target_tab_id = tab_id.unwrap_or_else(|| next_tab_id(&mut tab_seq));
-                    upload_image(&webview, target_tab_id, &name, &data, dir);
+                    upload_image(&webview, &assets, target_tab_id, &name, &data, dir);
+                }
+                Ok(IpcCommand::CloseConfirmed) => {
+                    *control_flow = ControlFlow::Exit;
                 }
                 Err(err) => {
                     send_event(
@@ -327,4 +381,34 @@ fn main() -> wry::Result<()> {
             _ => {}
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SharedAssetRegistry, app_protocol_response};
+    use md_bider::assets::UploadedAssetRegistry;
+    use std::sync::{Arc, Mutex};
+    use wry::http::StatusCode;
+
+    #[test]
+    fn custom_protocol_serves_registered_uploaded_assets() {
+        let dir =
+            std::env::temp_dir().join(format!("md-bider-protocol-test-{}", std::process::id()));
+        let assets_dir = dir.join("assets");
+        std::fs::create_dir_all(&assets_dir).expect("create assets dir");
+        let image_path = assets_dir.join("photo.png");
+        std::fs::write(&image_path, b"png").expect("write image");
+
+        let assets: SharedAssetRegistry = Arc::new(Mutex::new(UploadedAssetRegistry::default()));
+        assets
+            .lock()
+            .expect("lock registry")
+            .register_uploaded_asset("assets/photo.png", image_path);
+
+        let response = app_protocol_response("/assets/photo.png", &assets);
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.body().as_slice(), b"png");
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
 }

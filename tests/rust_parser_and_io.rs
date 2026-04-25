@@ -199,3 +199,16 @@ fn writes_and_reads_utf8_file() {
 
     let _ = fs::remove_file(path);
 }
+
+#[test]
+fn utf8_write_replaces_existing_file() {
+    let path = temp_file("replace_utf8.md");
+
+    write_text_utf8(&path, "old").expect("write initial content");
+    write_text_utf8(&path, "new").expect("replace existing content");
+
+    let loaded = read_text_with_fallback(&path).expect("read replaced file");
+    assert_eq!(loaded, "new");
+
+    let _ = fs::remove_file(path);
+}

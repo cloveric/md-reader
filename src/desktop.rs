@@ -37,6 +37,7 @@ pub enum IpcCommand {
         #[serde(default)]
         dir: Option<String>,
     },
+    CloseConfirmed,
 }
 
 impl IpcCommand {
@@ -67,6 +68,7 @@ pub enum HostEvent {
     Status {
         message: String,
     },
+    CloseRequested,
 }
 
 pub fn to_webview_script(event: &HostEvent) -> Result<String, serde_json::Error> {
@@ -158,6 +160,13 @@ mod tests {
                 dir: None,
             }
         );
+    }
+
+    #[test]
+    fn parses_close_confirmed_command() {
+        let cmd = IpcCommand::parse(r##"{"cmd":"close_confirmed"}"##)
+            .expect("parse close_confirmed command");
+        assert_eq!(cmd, IpcCommand::CloseConfirmed);
     }
 
     #[test]

@@ -69,3 +69,38 @@ fn toolbar_contains_version_badge() {
         "expected a dedicated version badge class in the editor shell"
     );
 }
+
+#[test]
+fn app_shell_handles_redo_shortcuts_when_toolbar_redo_exists() {
+    let html = shell_html();
+    assert!(
+        html.contains("function runEditorHistoryCommand(command)"),
+        "expected app shell history shortcut bridge"
+    );
+    assert!(
+        html.contains("key === \"y\"") && html.contains("runEditorHistoryCommand(\"redo\")"),
+        "expected Ctrl/Cmd+Y to trigger editor redo"
+    );
+    assert!(
+        html.contains("key === \"z\" && event.shiftKey")
+            && html.contains("runEditorHistoryCommand(\"redo\")"),
+        "expected Ctrl/Cmd+Shift+Z to trigger editor redo"
+    );
+}
+
+#[test]
+fn app_shell_confirms_native_close_when_tabs_are_dirty() {
+    let html = shell_html();
+    assert!(
+        html.contains("function hasDirtyTabs()"),
+        "expected helper that checks dirty tabs before native close"
+    );
+    assert!(
+        html.contains("message.event === \"close_requested\""),
+        "expected host close request handling"
+    );
+    assert!(
+        html.contains("cmd: \"close_confirmed\""),
+        "expected renderer to notify host after close is confirmed"
+    );
+}
